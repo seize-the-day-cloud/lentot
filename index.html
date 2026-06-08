@@ -64,10 +64,9 @@
   }
 
   /*
-    a soft shadow that walks the ground beneath each outfit, on the
-    same path and timing as its set — pooling and fading exactly
-    when the outfit comes into focus / blurs away under the head,
-    so the floor doesn't sit empty while a set passes through
+    a soft shadow that pools beneath the outfit while it pauses under
+    the head — faded in by script for the hold, then faded back out
+    once that outfit sets off toward its day box
   */
   .shadow {
     position: absolute;
@@ -79,42 +78,12 @@
     border-radius: 50%;
     background: #000000;
     filter: blur(3px);
-    animation-name: shadow-walk;
-    animation-duration: 9s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-fill-mode: backwards;
+    opacity: 0;
+    transition: opacity 0.5s ease;
   }
 
-  .shadow--1 { animation-delay: 0s; }
-  .shadow--2 { animation-delay: 3s; }
-  .shadow--3 { animation-delay: 6s; }
-
-  @keyframes shadow-walk {
-    0% {
-      transform: translateX(calc(-50vw - 140px)) scaleX(0.6);
-      opacity: 0;
-    }
-    11.1111% {
-      transform: translateX(0) scaleX(1);
-      opacity: 0.16;
-    }
-    22.2222% {
-      transform: translateX(0) scaleX(1.15);
-      opacity: 0.22;
-    }
-    33.3333% {
-      transform: translateX(calc(50vw + 140px)) scaleX(0.6);
-      opacity: 0;
-    }
-    33.4% {
-      transform: translateX(calc(-50vw - 140px)) scaleX(0.6);
-      opacity: 0;
-    }
-    100% {
-      transform: translateX(calc(-50vw - 140px)) scaleX(0.6);
-      opacity: 0;
-    }
+  .shadow.is-visible {
+    opacity: 0.18;
   }
 
   .head {
@@ -166,12 +135,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    animation-name: walk-across;
-    animation-duration: 9s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-fill-mode: backwards;
-    will-change: transform, filter;
+    transform: translate(calc(-50vw - 140px), 0) scale(1);
+    filter: blur(16px);
+    opacity: 0;
+    will-change: transform, filter, opacity;
   }
 
   .set img {
@@ -189,40 +156,46 @@
     margin-top: -8px;
   }
 
-  .set--1 { animation-delay: 0s; }
-  .set--2 { animation-delay: 3s; }
-  .set--3 { animation-delay: 6s; }
-
   /*
-    enter blurred from off-screen left, sharpen into focus as it
-    arrives under the head, hold there for 1s, then blur back out
-    to the right — size never changes
+    DAY1–DAY3 boxes — pinned to the right edge of the stage. Each
+    outfit, once its turn under the head is over, travels here and
+    settles into its own box in order; once all three are filled the
+    whole set blurs away together and the cycle starts again
   */
-  @keyframes walk-across {
-    0% {
-      transform: translateX(calc(-50vw - 140px));
-      filter: blur(16px);
-    }
-    11.1111% {
-      transform: translateX(0);
-      filter: blur(0);
-    }
-    22.2222% {
-      transform: translateX(0);
-      filter: blur(0);
-    }
-    33.3333% {
-      transform: translateX(calc(50vw + 140px));
-      filter: blur(16px);
-    }
-    33.4% {
-      transform: translateX(calc(-50vw - 140px));
-      filter: blur(16px);
-    }
-    100% {
-      transform: translateX(calc(-50vw - 140px));
-      filter: blur(16px);
-    }
+  .day-list {
+    position: absolute;
+    top: 50%;
+    right: clamp(16px, 6vw, 64px);
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .day-box {
+    width: 96px;
+    padding: 14px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.16);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
+  }
+
+  .day-box__label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: #000000;
+    opacity: 0.4;
+  }
+
+  .day-box__slot {
+    display: block;
+    width: 62px;
+    height: 104px;
   }
 
   /* slogan */
@@ -283,14 +256,27 @@
     <h1 class="visually-hidden">lentot</h1>
 
     <div class="stage" aria-hidden="true">
+      <div class="day-list">
+        <div class="day-box">
+          <span class="day-box__label">DAY1</span>
+          <span class="day-box__slot"></span>
+        </div>
+        <div class="day-box">
+          <span class="day-box__label">DAY2</span>
+          <span class="day-box__slot"></span>
+        </div>
+        <div class="day-box">
+          <span class="day-box__label">DAY3</span>
+          <span class="day-box__slot"></span>
+        </div>
+      </div>
+
       <div class="figure">
         <span class="logo-pre" aria-hidden="true">lent</span>
         <span class="head" aria-hidden="true"></span>
         <span class="logo-post" aria-hidden="true">t</span>
         <span class="ground" aria-hidden="true"></span>
-        <span class="shadow shadow--1" aria-hidden="true"></span>
-        <span class="shadow shadow--2" aria-hidden="true"></span>
-        <span class="shadow shadow--3" aria-hidden="true"></span>
+        <span class="shadow" aria-hidden="true"></span>
 
         <div class="set set--1">
           <img class="top" src="lentot_last_style_girl_top_png/girl.1.png" alt="">
@@ -312,6 +298,103 @@
   </div>
 
   <script>
+    /*
+      Walking sequence: each outfit blurs in from the left, sharpens
+      to focus and pauses under the head (shadow pools beneath it),
+      then travels over to its own DAY box and settles inside, in
+      order. Once all three boxes are filled, every outfit blurs and
+      fades out together, resets off-screen, and the cycle repeats.
+    */
+    (function () {
+      var sets = Array.prototype.slice.call(document.querySelectorAll('.set'));
+      var slots = Array.prototype.slice.call(document.querySelectorAll('.day-box__slot'));
+      var shadow = document.querySelector('.shadow');
+
+      var OFFSCREEN = 'translate(calc(-50vw - 140px), 0) scale(1)';
+      var AT_HEAD = 'translate(0, 0) scale(1)';
+
+      function wait(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      function nextFrame() {
+        return new Promise(function (resolve) {
+          requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+        });
+      }
+
+      function placeNow(el, transform, filter, opacity) {
+        el.style.transition = 'none';
+        el.style.transform = transform;
+        el.style.filter = filter;
+        el.style.opacity = opacity;
+        el.getBoundingClientRect();
+        el.style.transition = '';
+      }
+
+      function moveTo(el, transform, filter, opacity, duration, easing) {
+        return new Promise(function (resolve) {
+          el.style.transition =
+            'transform ' + duration + 'ms ' + easing + ', ' +
+            'filter ' + duration + 'ms ' + easing + ', ' +
+            'opacity ' + duration + 'ms ' + easing;
+          el.getBoundingClientRect();
+          el.style.transform = transform;
+          el.style.filter = filter;
+          el.style.opacity = opacity;
+          setTimeout(resolve, duration);
+        });
+      }
+
+      function fadeOut(el, duration) {
+        return new Promise(function (resolve) {
+          el.style.transition = 'filter ' + duration + 'ms ease, opacity ' + duration + 'ms ease';
+          el.getBoundingClientRect();
+          el.style.filter = 'blur(16px)';
+          el.style.opacity = '0';
+          setTimeout(resolve, duration);
+        });
+      }
+
+      function travelToSlot(el, slot) {
+        var setRect = el.getBoundingClientRect();
+        var slotRect = slot.getBoundingClientRect();
+        var dx = (slotRect.left + slotRect.width / 2) - (setRect.left + setRect.width / 2);
+        var dy = (slotRect.top + slotRect.height / 2) - (setRect.top + setRect.height / 2);
+        var scale = Math.min(slotRect.width / setRect.width, slotRect.height / setRect.height);
+        return moveTo(
+          el,
+          'translate(' + dx + 'px, ' + dy + 'px) scale(' + scale + ')',
+          'blur(0)',
+          '1',
+          1100,
+          'cubic-bezier(0.65, 0, 0.35, 1)'
+        );
+      }
+
+      async function runCycle() {
+        for (var i = 0; i < sets.length; i++) {
+          var el = sets[i];
+          placeNow(el, OFFSCREEN, 'blur(16px)', '0');
+          await nextFrame();
+          await moveTo(el, AT_HEAD, 'blur(0)', '1', 1500, 'linear');
+          shadow.classList.add('is-visible');
+          await wait(900);
+          shadow.classList.remove('is-visible');
+          await travelToSlot(el, slots[i]);
+        }
+
+        await wait(900);
+        await Promise.all(sets.map(function (el) { return fadeOut(el, 900); }));
+        sets.forEach(function (el) { placeNow(el, OFFSCREEN, 'blur(16px)', '0'); });
+
+        await wait(400);
+        runCycle();
+      }
+
+      runCycle();
+    })();
+
     (function () {
       var signinBtn = document.querySelector('.signin');
       var head = document.querySelector('.head');
